@@ -1,4 +1,4 @@
-package load_config
+package goloadenv
 
 import (
 	"errors"

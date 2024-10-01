@@ -124,7 +124,7 @@ func TestEnvParseError(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	expected := "error parsing 'key1=value1,key2=value2' as environment variable PARSE_ERR: can't scan type: *load_config.CustomMapType"
+	expected := "error parsing 'key1=value1,key2=value2' as environment variable PARSE_ERR: can't scan type: *goloadenv.CustomMapType"
 	err = LoadEnv(&TestConfig{})
 	if err == nil {
 		t.Errorf("Expected error, got nil")
@@ -160,7 +160,7 @@ func TestEmbeddedStructParseError(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 
-	expected := "error loading nested struct 'ParseErr': error parsing 'key1=value1,key2=value2' as environment variable PARSE_EMBEDDED_ERR: can't scan type: *load_config.CustomMapType"
+	expected := "error loading nested struct 'ParseErr': error parsing 'key1=value1,key2=value2' as environment variable PARSE_EMBEDDED_ERR: can't scan type: *goloadenv.CustomMapType"
 	err = LoadEnv(&TestConfig{})
 	if err == nil {
 		t.Errorf("Expected error, got nil")

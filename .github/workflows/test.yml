@@ -18,6 +18,17 @@ jobs:
           go-version: ${{ matrix.go-version }}
       - name: Install dependencies
         run: go get .
+        
+      - name: Install go-acc
+        run: go install github.com/ory/go-acc@latest
+      - name: Run tests with coverage
+        run: go-acc ./... > coverage.txt
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.go-version }}
+          path: coverage.txt
+
       - name: Test with Go
         run: go test -json > TestResults-${{ matrix.go-version }}.json
       - name: Upload Go test results

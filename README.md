@@ -15,5 +15,9 @@ Extensible configuration tools for Go.
 * Array and list parsing
 * Extensible type parsing
 
+## Examples
+
+See https://pkg.go.dev/github.com/munisense/goloadenv for some examples on how to use this library.
+
 ## License
 Released under the [MIT License](https://github.com/munisense/goloadenv/blob/master/LICENSE)

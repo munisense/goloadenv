@@ -2,6 +2,7 @@ package goloadenv
 
 import (
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -20,7 +21,7 @@ type TestConfig struct {
 	Host           string `env:"HOST"`
 	Port           int    `env:"PORT"`
 	Optional       string `env:"OPTIONAL;optional"`
-	Default        string `env:"DEFAULT;default:default"`
+	Default        string `env:"DEFAULT;default:something"`
 	Struct         EmbbededStruct
 	StructParseErr EmbbededParseErrStruct
 	ParseErr       CustomMapType `env:"PARSE_ERR;optional"`
@@ -78,8 +79,8 @@ func TestLoadEnv(t *testing.T) {
 		t.Errorf("Expected OPTIONAL to be empty, got %s", cfg.Optional)
 	}
 
-	if cfg.Default != "default" {
-		t.Errorf("Expected DEFAULT=default, got %s", cfg.Default)
+	if cfg.Default != "something" {
+		t.Errorf("Expected DEFAULT=something, got %s", cfg.Default)
 	}
 }
 
@@ -242,5 +243,63 @@ func TestArrayField(t *testing.T) {
 	expected := [5]int{1, 2, 3, 4, 5}
 	if someStruct.IntArray != expected {
 		t.Errorf("Expected %v, got %v", expected, someStruct.IntArray)
+	}
+}
+
+func clearTagNames() {
+	tagNames = map[string]struct{}{}
+}
+
+func TestTagSliceToKeyMap(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     []string
+		want      map[string]string
+		expectErr bool
+	}{
+		{
+			name:      "Empty slice",
+			input:     []string{},
+			want:      map[string]string{},
+			expectErr: false,
+		},
+		{
+			name:      "Single name tag",
+			input:     []string{"DB_HOST"},
+			want:      map[string]string{"name": "DB_HOST"},
+			expectErr: false,
+		},
+		{
+			name:      "Name and default tag",
+			input:     []string{"DB_HOST", "default", "localhost"},
+			want:      map[string]string{"name": "DB_HOST", "default": "localhost"},
+			expectErr: false,
+		},
+		{
+			name:      "Missing default value",
+			input:     []string{"DB_HOST", "default"},
+			want:      nil,
+			expectErr: true,
+		},
+		{
+			name:      "Duplicate tag",
+			input:     []string{"DB_HOST", "default", "localhost", "default", "127.0.0.1"},
+			want:      nil,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			clearTagNames()
+			got, err := tagSliceToKeyMap(tt.input)
+			if (err != nil) != tt.expectErr {
+				t.Errorf("tagSliceToKeyMap() error = %v, expectErr %v", err, tt.expectErr)
+				return
+			}
+			if !tt.expectErr && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("tagSliceToKeyMap() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

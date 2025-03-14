@@ -12,6 +12,12 @@ const (
 	tagName = "env"
 )
 
+var oracle func(string) string = os.Getenv
+
+func SetOracle(oracleFunc func(string) string) {
+	oracle = oracleFunc
+}
+
 // EnvNotFoundError represents an error when an expected environment variable is not found.
 type EnvNotFoundError struct {
 	Env string
@@ -79,7 +85,7 @@ func LoadEnv(config interface{}) error {
 		return errors.New("config must be a pointer to a struct")
 	}
 	val := reflect.ValueOf(config).Elem()
-	for i := 0; i < val.NumField(); i++ {
+	for i := 0; i < val.Type().NumField(); i++ {
 		tags, err := getTags(val.Type().Field(i))
 		if err != nil {
 			return fmt.Errorf("error getting tags for field: '%s': %w", val.Type().Field(i).Name, err)
@@ -120,16 +126,14 @@ func LoadEnv(config interface{}) error {
 
 func getTags(field reflect.StructField) (map[string]string, error) {
 	unparsedTags := field.Tag.Get(tagName)
-	tagSlice := strings.FieldsFunc(unparsedTags, SplitTags)
+	tagSlice := strings.FieldsFunc(unparsedTags, splitTags)
 	return tagSliceToKeyMap(tagSlice)
 }
 
-// TODO support all chars in default value
-// TODO allow for empty string definition of a env var, like SOMETHING=
-// getField gets the value of an environment variable based on the tag. returns the value, a bool indicating if the value is optional, and an error if the value is not found.
-// used internally by LoadEnv.
+// getField gets the value of an environment variable based on the tag.
+// returns the value, a bool indicating if the value is optional, and an error if the value is not found.
 func getField(tags map[string]string) (string, error) {
-	str := os.Getenv(tags["name"])
+	str := oracle(tags["name"])
 	if str != "" {
 		return str, nil
 	}
@@ -144,8 +148,8 @@ func getField(tags map[string]string) (string, error) {
 	return "", nil
 }
 
-// setField sets the value of a field based on the string value and the field type. It returns an error if the field cannot be set or if the string value cannot be parsed into the field type.
-// used internally by LoadEnv.
+// setField sets the value of a field based on the string value and the field type.
+// It returns an error if the field cannot be set or if the string value cannot be parsed into the field type.
 func setField(field reflect.Value, str string, tags map[string]string) error {
 	if !field.CanSet() {
 		return &EnvParseError{value: str, env: tags["name"], err: errors.New("field cannot be set")}
@@ -166,8 +170,8 @@ func setField(field reflect.Value, str string, tags map[string]string) error {
 	return nil
 }
 
-// setIterableField sets the values of a field based on the string value and the underlaying iterable field type. It returns an error if the field cannot be set, if the string value cannot be parsed into the field type or if the size of the array is overflowed.
-// used internally by LoadEnv.
+// setIterableField sets the values of a field based on the string value and the underlaying iterable field type.
+// It returns an error if the field cannot be set, if the string value cannot be parsed into the field type or if the size of the array is overflowed.
 func setIterableField(field reflect.Value, str string, tags map[string]string) error {
 	if !field.CanSet() {
 		return &EnvParseError{value: str, env: tags["name"], err: errors.New("field cannot be set")}
@@ -209,9 +213,11 @@ func parseArrayString(str string) ([]string, error) {
 var tagNames = map[string]struct{}{}
 
 // tagSliceToKeyMap converts a slice of tag strings into a map where the key is the tag and the value is the default value.
-// It is used internally by LoadEnv.
 func tagSliceToKeyMap(slice []string) (map[string]string, error) {
 	m := make(map[string]string)
+	if len(slice) == 0 {
+		return m, nil
+	}
 	for index := 0; index < len(slice); index++ {
 		item := slice[index]
 		if index == 0 {
@@ -223,6 +229,9 @@ func tagSliceToKeyMap(slice []string) (map[string]string, error) {
 			continue
 		}
 		if item == "default" {
+			if index+1 >= len(slice) {
+				return nil, fmt.Errorf("missing default value for tag: %s", item)
+			}
 			if _, ok := m[item]; ok {
 				return nil, fmt.Errorf("duplicate tag: %s", item)
 			}
@@ -235,8 +244,7 @@ func tagSliceToKeyMap(slice []string) (map[string]string, error) {
 	return m, nil
 }
 
-// SplitTags is a helper function used to split struct tags.
-// It is used internally by LoadEnv.
-func SplitTags(r rune) bool {
+// splitTags is a helper function used to split struct tags.
+func splitTags(r rune) bool {
 	return r == ';' || r == ':'
 }

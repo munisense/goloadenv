@@ -1,4 +1,4 @@
-name: test coverage
+name: tests
 
 on: [push]
 
